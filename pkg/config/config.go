@@ -23,6 +23,8 @@ func init() {
 	config.BindEnv("llmUrl", "LLM_URL")
 	config.BindEnv("metricsExportAddress", "METRICS_EXPORT_ADDRESS")
 	config.BindEnv("storagePath", "STORAGE_PATH")
+	config.BindEnv("build", "BUILD_JOB_IMAGE")
+	config.SetDefault("build", "datatunerx/ray271-llama2-7b-finetune-buildimage:v0.1.1")
 	config.SetDefault("llmUrl", "/tmp/llama2-7b/")
 }
 
@@ -84,4 +86,8 @@ func GetStoragePath() string {
 
 func GetMetricsExportAddress() string {
 	return config.GetString("metricsExportAddress")
+}
+
+func GetBuildJobImage() string {
+	return config.GetString("build")
 }

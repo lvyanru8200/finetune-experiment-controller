@@ -21,7 +21,6 @@ const (
 	defaultFinetuneCodePath = "/tmp/llama2-7b/"
 
 	defaultBuildImageJobContainerName = "imagebuild"
-	defaultBuildImageJobImage         = "release.daocloud.io/datatunerx/buildimage:v0.0.1"
 )
 
 func GenerateFinetune(finetuneJob *finetunev1beta1.FinetuneJob) *finetunev1beta1.Finetune {
@@ -69,7 +68,7 @@ func GenerateBuildImageJob(filePath, imageName, imageTag string, finetuneJobInst
 					Containers: []corev1.Container{
 						{
 							Name:  defaultBuildImageJobContainerName,
-							Image: defaultBuildImageJobImage,
+							Image: config.GetBuildJobImage(),
 							Env: []corev1.EnvVar{
 								{
 									Name:  "S3_ENDPOINT",

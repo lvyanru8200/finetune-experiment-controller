@@ -133,7 +133,7 @@ func (r *FinetuneJobReconciler) Reconcile(ctx context.Context, req ctrl.Request)
 		return handlererr.HandlerErr(err)
 	}
 
-	if err := r.reconcileByScoringStatus(ctx, finetuneJob); err != nil {
+	if err := r.reconcileByScoringStatus(ctx, finetuneJob, existFinetune); err != nil {
 		return handlererr.HandlerErr(err)
 	}
 
@@ -308,7 +308,7 @@ func (r *FinetuneJobReconciler) reconcileByFinetuneStatus(ctx context.Context, f
 		// build llmCheckpoint image server. job
 
 		imageName := fmt.Sprintf("ray271-llama2-7b-finetune-checkpoint-%s", finetuneJobInstance.Name)
-		imageTag := fmt.Sprintf("%s", time.Now().Format("20060102"))
+		imageTag := fmt.Sprintf("%s", finetuneJobInstance.UID[len(finetuneJobInstance.UID)-4:])
 		checkPointFilePath := finetuneInstance.Status.LLMCheckpoint.CheckpointPath
 		checkPointFilePath = util.RemoveBucketName(checkPointFilePath, config.GetS3Bucket())
 		buildImageJob := generate.GenerateBuildImageJob(checkPointFilePath, imageName, imageTag, finetuneJobInstance)
@@ -330,6 +330,11 @@ func (r *FinetuneJobReconciler) reconcileByFinetuneStatus(ctx context.Context, f
 		llmCheckpoint.Spec.CheckpointImage.Name = &llmImage
 		llmCheckpoint.Spec.CheckpointImage.CheckPointPath = fmt.Sprintf("/checkpoint/%s", checkPointFilePath)
 		llmCheckpoint.Spec.CheckpointImage.LLMPath = llmCheckpoint.Spec.Image.Path
+		llmCheckpoint.SetLabels(map[string]string{
+			// todo fix
+			"app.kubernetes.io/finetuneexperiment": finetuneJobInstance.OwnerReferences[0].Name,
+			"app.kubernetes.io/finetunejob":        finetuneJobInstance.Name,
+		})
 		if err := r.Client.Update(ctx, llmCheckpoint); err != nil {
 			r.Log.Errorf("Update llmCheckpoint %s/%s failed: %v", llmCheckpoint.Namespace, llmCheckpoint.Name, err)
 			return err
@@ -465,7 +470,7 @@ func (r *FinetuneJobReconciler) reconcileByRayServiceStatus(ctx context.Context,
 	return nil
 }
 
-func (r *FinetuneJobReconciler) reconcileByScoringStatus(ctx context.Context, finetuneJob *finetunev1beta1.FinetuneJob) error {
+func (r *FinetuneJobReconciler) reconcileByScoringStatus(ctx context.Context, finetuneJob *finetunev1beta1.FinetuneJob, finetuneInstance *finetunev1beta1.Finetune) error {
 
 	scoringName := fmt.Sprintf("%s-scoring", finetuneJob.Name)
 	scoring := &extensionv1beta1.Scoring{}
@@ -504,6 +509,17 @@ func (r *FinetuneJobReconciler) reconcileByScoringStatus(ctx context.Context, fi
 		}
 		if err := r.Delete(ctx, rayService); err != nil {
 			r.Log.Errorf("Delete rayService %s/%s failed: %v", finetuneJob.Namespace, rayServiceName, err)
+			return err
+		}
+		// todo fix
+		llmCheckpoint := &corev1beta1.LLMCheckpoint{}
+		if err := r.Get(ctx, types.NamespacedName{Name: finetuneInstance.Status.LLMCheckpoint.LLMCheckpointRef, Namespace: finetuneInstance.Namespace}, llmCheckpoint); err != nil {
+			r.Log.Errorf("Get llmCheckpoint %s/%s failed, err: %v", finetuneInstance.Namespace, finetuneInstance.Status.LLMCheckpoint, err)
+			return err
+		}
+		llmCheckpoint.Labels["app.kubernetes.io/scoring"] = *scoring.Status.Score
+		if err := r.Client.Update(ctx, llmCheckpoint); err != nil {
+			r.Log.Errorf("Update llmCheckpoint %s/%s failed: %v", llmCheckpoint.Namespace, llmCheckpoint.Name, err)
 			return err
 		}
 	}
