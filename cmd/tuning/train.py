@@ -27,6 +27,7 @@ from ray.train.huggingface import TransformersTrainer
 from transformers.integrations import is_deepspeed_zero3_enabled
 from transformers.tokenization_utils import PreTrainedTokenizer
 from datasets import load_dataset, Dataset
+from pyarrow import csv
 
 from callback import LogCallback
 from parser import get_train_args
@@ -336,7 +337,9 @@ def main():
 
     tokenizer = AutoTokenizer.from_pretrained(model_path)
 
-    train_dataset = ray.data.read_csv(data_args.train_path). \
+    read_options = csv.ReadOptions(block_size=1 << 30)
+    ## todo block_size
+    train_dataset = ray.data.read_csv(data_args.train_path, read_options=read_options). \
         map_batches(rename_columns, fn_args=[columns_map], batch_format="pandas")
     print(train_dataset)
     train_dataset = preprocess_dataset(train_dataset, tokenizer, training_args)
@@ -344,7 +347,7 @@ def main():
     input_datasets = {"train": train_dataset}
 
     if data_args.evaluation_path:
-        evaluation_dataset = ray.data.read_csv(data_args.train_path). \
+        evaluation_dataset = ray.data.read_csv(data_args.train_path, read_options=read_options). \
             map_batches(rename_columns, fn_args=[columns_map], batch_format="pandas")
         print(evaluation_dataset)
         evaluation_dataset = preprocess_dataset(evaluation_dataset, tokenizer, training_args)

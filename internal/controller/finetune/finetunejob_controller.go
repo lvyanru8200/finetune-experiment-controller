@@ -27,6 +27,7 @@ import (
 	"github.com/DataTunerX/datatunerx/pkg/util"
 	"github.com/DataTunerX/datatunerx/pkg/util/generate"
 	"github.com/DataTunerX/datatunerx/pkg/util/handlererr"
+	"github.com/DataTunerX/datatunerx/pkg/util/label"
 	corev1beta1 "github.com/DataTunerX/meta-server/api/core/v1beta1"
 	extensionv1beta1 "github.com/DataTunerX/meta-server/api/extension/v1beta1"
 	finetunev1beta1 "github.com/DataTunerX/meta-server/api/finetune/v1beta1"
@@ -306,7 +307,6 @@ func (r *FinetuneJobReconciler) reconcileByFinetuneStatus(ctx context.Context, f
 			return err
 		}
 		// build llmCheckpoint image server. job
-
 		imageName := fmt.Sprintf("ray271-llama2-7b-finetune-checkpoint-%s", finetuneJobInstance.Name)
 		imageTag := fmt.Sprintf("%s", finetuneJobInstance.UID[len(finetuneJobInstance.UID)-4:])
 		checkPointFilePath := finetuneInstance.Status.LLMCheckpoint.CheckpointPath
@@ -330,11 +330,12 @@ func (r *FinetuneJobReconciler) reconcileByFinetuneStatus(ctx context.Context, f
 		llmCheckpoint.Spec.CheckpointImage.Name = &llmImage
 		llmCheckpoint.Spec.CheckpointImage.CheckPointPath = fmt.Sprintf("/checkpoint/%s", checkPointFilePath)
 		llmCheckpoint.Spec.CheckpointImage.LLMPath = llmCheckpoint.Spec.Image.Path
-		llmCheckpoint.SetLabels(map[string]string{
+		llmCheckpointLabel := label.MergeLabel(finetuneJobInstance.Labels, map[string]string{
 			// todo fix
 			"app.kubernetes.io/finetuneexperiment": finetuneJobInstance.OwnerReferences[0].Name,
 			"app.kubernetes.io/finetunejob":        finetuneJobInstance.Name,
 		})
+		llmCheckpoint.SetLabels(llmCheckpointLabel)
 		if err := r.Client.Update(ctx, llmCheckpoint); err != nil {
 			r.Log.Errorf("Update llmCheckpoint %s/%s failed: %v", llmCheckpoint.Namespace, llmCheckpoint.Name, err)
 			return err

@@ -24,7 +24,7 @@ const (
 )
 
 func GenerateFinetune(finetuneJob *finetunev1beta1.FinetuneJob) *finetunev1beta1.Finetune {
-	finetuneLabel := label.GenerateInstanceLabel(finetuneJob.Name)
+	finetuneLabel := label.GenerateInstanceLabel(finetuneJob.Name, finetuneJob.Labels)
 	finetune := &finetunev1beta1.Finetune{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      finetuneJob.Spec.FineTune.Name,
@@ -55,7 +55,7 @@ func GenerateBuildImageJob(filePath, imageName, imageTag string, finetuneJobInst
 	privileged := true
 	directory := corev1.HostPathDirectory
 	buildImageJobName := fmt.Sprintf("%s-buildimage", finetuneJobInstance.Name)
-	jobLabel := label.GenerateInstanceLabel(finetuneJobInstance.Name)
+	jobLabel := label.GenerateInstanceLabel(finetuneJobInstance.Name, finetuneJobInstance.Labels)
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      buildImageJobName,

@@ -11,12 +11,16 @@ const (
 	LabelFinetuneBindingKey = "finetune.datatunerx.io/finetunebinding"
 )
 
-func GenerateInstanceLabel(instanceName string) map[string]string {
+func GenerateInstanceLabel(instanceName string, customLabels map[string]string) map[string]string {
+	if customLabels == nil {
+		customLabels = make(map[string]string)
+	}
 	baseLabel := GetBaseLabel()
-	return MergeLabel(baseLabel, map[string]string{
+	customLabel := MergeLabel(map[string]string{
 		LabelInstanceKey:  instanceName,
 		LabelComponentKey: LabelFinetuneJob,
-	})
+	}, customLabels)
+	return MergeLabel(baseLabel, customLabel)
 }
 
 func GetBaseLabel() map[string]string {
@@ -26,6 +30,9 @@ func GetBaseLabel() map[string]string {
 }
 
 func MergeLabel(baseLabel map[string]string, customLabel map[string]string) map[string]string {
+	if baseLabel == nil {
+		baseLabel = make(map[string]string)
+	}
 	for k, v := range customLabel {
 		if _, exists := baseLabel[k]; !exists {
 			baseLabel[k] = v

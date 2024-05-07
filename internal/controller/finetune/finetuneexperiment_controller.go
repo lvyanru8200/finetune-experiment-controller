@@ -131,6 +131,7 @@ func (r *FinetuneExperimentReconciler) Reconcile(ctx context.Context, req ctrl.R
 				finetuneJobInstance := &finetunev1beta1.FinetuneJob{}
 				finetuneJobInstance.Spec = finetuneJob.Spec
 				finetuneJobInstance.Name = finetuneJob.Name
+				finetuneJobInstance.Labels = finetuneExperiment.Labels
 				r.Log.Infof("finetuneJob Name: %s", finetuneJobInstance.Name)
 				finetuneJobInstance.Namespace = finetuneExperiment.Namespace
 				if err := ctrl.SetControllerReference(finetuneExperiment, finetuneJobInstance, r.Scheme); err != nil {
